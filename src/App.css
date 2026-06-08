@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0A0A0A;color:#F5F5F5;font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+.app-shell{height:100vh;background:#0A0A0A;display:flex;justify-content:center;overflow:hidden;}
+.app{width:100%;max-width:480px;height:100vh;background:#0A0A0A;position:relative;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;}
+@media(min-width:520px){.app-shell{background:linear-gradient(135deg,#0A0A0A 0%,#111 100%);}.app{box-shadow:0 0 60px rgba(0,0,0,0.8);}}
+.nav{position:sticky;bottom:0;width:100%;background:#111;border-top:1px solid #2A2A2A;display:flex;z-index:100;padding:8px 0 16px;}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;color:#555;transition:color 0.2s;padding:6px 0;}
+.nb.active{color:#E8FF00;}
+.nb .ni{font-size:20px;line-height:1;}
+.nb .nl{font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;font-family:'DM Sans',sans-serif;}
+.hdr{background:#111;padding:16px 20px 14px;border-bottom:1px solid #2A2A2A;position:sticky;top:0;z-index:50;width:100%;}
+.scr{padding:16px 20px 24px;flex:1;}
+.card{background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+textarea{width:100%;background:rgba(255,255,255,0.05);border:1px solid #2A2A2A;border-radius:10px;padding:10px 12px;color:#F5F5F5;font-family:'DM Sans',sans-serif;font-size:13px;resize:none;min-height:70px;outline:none;transition:border-color 0.2s;}
+textarea:focus{border-color:#E8FF00;}
+input{outline:none;}
+.streak-flame{animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.15);}}
