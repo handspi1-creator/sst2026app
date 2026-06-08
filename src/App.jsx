@@ -1185,56 +1185,58 @@ function WorksheetScreen({dayNum,onBack,getScore}){
 
         {/* Question sections */}
         {sections.map(sec=>(
-          <div key={sec.id} style={{background:sec.color+"0D",border:"1px solid "+sec.color+"33",borderRadius:12,padding:"14px",marginBottom:10}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12,color:sec.color,fontFamily:"DM Sans,sans-serif"}}>{sec.label}</div>
-            {sec.qs.map((q,qi)=>(
-              <div key={qi} style={{marginBottom:16}}>
-                <div style={{fontSize:13,color:"#F5F5F5",lineHeight:1.5,marginBottom:8,fontWeight:500,fontFamily:"DM Sans,sans-serif"}}>{qi+1}. {q}</div>
-                <textarea placeholder="Write your answer here..." value={answers[sec.id+"_"+qi]||""} onChange={e=>upd(sec.id+"_"+qi,e.target.value)}/>
+          <React.Fragment key={sec.id}>
+            <div style={{background:sec.color+"0D",border:"1px solid "+sec.color+"33",borderRadius:12,padding:"14px",marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12,color:sec.color,fontFamily:"DM Sans,sans-serif"}}>{sec.label}</div>
+              {sec.qs.map((q,qi)=>(
+                <div key={qi} style={{marginBottom:16}}>
+                  <div style={{fontSize:13,color:"#F5F5F5",lineHeight:1.5,marginBottom:8,fontWeight:500,fontFamily:"DM Sans,sans-serif"}}>{qi+1}. {q}</div>
+                  <textarea placeholder="Write your answer here..." value={answers[sec.id+"_"+qi]||""} onChange={e=>upd(sec.id+"_"+qi,e.target.value)}/>
+                  <CommunityPanel
+                    storageKey={"comm_d"+dayNum+"_"+sec.id+"_"+qi}
+                    dayNum={dayNum}
+                    phase={sec.id+"_"+qi}
+                    myContent={answers[sec.id+"_"+qi]||""}
+                    myGame={selGame}
+                    color="#00AEEF"
+                    locked={false}
+                    emptyMsg="Write your answer above to unlock community responses"
+                    shareLabel="Post My Answer"
+                    viewLabel="View community responses"
+                  />
+                </div>
+              ))}
+            </div>
+            {sec.id==="half"&&(
+              <div style={{background:"#0A1A0A",border:"1px solid #2A6A2A",borderRadius:12,padding:"14px",marginBottom:10}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#4CAF50",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,fontFamily:"DM Sans,sans-serif"}}>Halftime Formation Challenge</div>
+                <div style={{fontSize:12,color:"#888",marginBottom:10,fontFamily:"DM Sans,sans-serif"}}>Drag the numbered players into position on the field</div>
+                <DraggableField positions={players} setPositions={setPlayers}/>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.25)",textAlign:"center",marginTop:6,fontFamily:"DM Sans,sans-serif"}}>Hold and drag any player dot to move them</div>
+                <div style={{display:"flex",gap:10,alignItems:"center",marginTop:10}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#4CAF50",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:5,fontFamily:"DM Sans,sans-serif"}}>Formation</div>
+                    <input style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid #2A6A2A",borderRadius:10,padding:"9px 12px",color:"#F5F5F5",fontFamily:"DM Sans,sans-serif",fontSize:14,fontWeight:700,outline:"none"}} placeholder="e.g. 4-3-3" value={answers.formation||""} onChange={e=>upd("formation",e.target.value)}/>
+                  </div>
+                  <button onClick={resetPl} style={{padding:"9px 14px",background:"rgba(255,75,75,0.1)",border:"1px solid rgba(255,75,75,0.3)",borderRadius:10,color:"#FF4B4B",fontFamily:"DM Sans,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",marginTop:18,whiteSpace:"nowrap"}}>Reset</button>
+                </div>
                 <CommunityPanel
-                  storageKey={"comm_d"+dayNum+"_"+sec.id+"_"+qi}
+                  storageKey={"comm_formation_d"+dayNum}
                   dayNum={dayNum}
-                  phase={sec.id+"_"+qi}
-                  myContent={answers[sec.id+"_"+qi]||""}
+                  phase="formation"
+                  myContent={answers.formation||""}
                   myGame={selGame}
-                  color="#00AEEF"
+                  color="#4CAF50"
                   locked={false}
-                  emptyMsg="Write your answer above to unlock community responses"
-                  shareLabel="Post My Answer"
-                  viewLabel="View community responses"
+                  emptyMsg="Enter your formation above to unlock community formations"
+                  shareLabel="Post My Formation"
+                  viewLabel="View community formations"
+                  contentDisplay={answers.formation?("Formation: "+answers.formation):undefined}
                 />
               </div>
-            ))}
-          </div>
+            )}
+          </React.Fragment>
         ))}
-
-        {/* Formation */}
-        <div style={{background:"#0A1A0A",border:"1px solid #2A6A2A",borderRadius:12,padding:"14px",marginBottom:12}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#4CAF50",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,fontFamily:"DM Sans,sans-serif"}}>Halftime Formation Challenge</div>
-          <div style={{fontSize:12,color:"#888",marginBottom:10,fontFamily:"DM Sans,sans-serif"}}>Drag the numbered players into position on the field</div>
-          <DraggableField positions={players} setPositions={setPlayers}/>
-          <div style={{fontSize:10,color:"rgba(255,255,255,0.25)",textAlign:"center",marginTop:6,fontFamily:"DM Sans,sans-serif"}}>Hold and drag any player dot to move them</div>
-          <div style={{display:"flex",gap:10,alignItems:"center",marginTop:10}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#4CAF50",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:5,fontFamily:"DM Sans,sans-serif"}}>Formation</div>
-              <input style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid #2A6A2A",borderRadius:10,padding:"9px 12px",color:"#F5F5F5",fontFamily:"DM Sans,sans-serif",fontSize:14,fontWeight:700,outline:"none"}} placeholder="e.g. 4-3-3" value={answers.formation||""} onChange={e=>upd("formation",e.target.value)}/>
-            </div>
-            <button onClick={resetPl} style={{padding:"9px 14px",background:"rgba(255,75,75,0.1)",border:"1px solid rgba(255,75,75,0.3)",borderRadius:10,color:"#FF4B4B",fontFamily:"DM Sans,sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",marginTop:18,whiteSpace:"nowrap"}}>Reset</button>
-          </div>
-          <CommunityPanel
-            storageKey={"comm_formation_d"+dayNum}
-            dayNum={dayNum}
-            phase="formation"
-            myContent={answers.formation||""}
-            myGame={selGame}
-            color="#4CAF50"
-            locked={false}
-            emptyMsg="Enter your formation above to unlock community formations"
-            shareLabel="Post My Formation"
-            viewLabel="View community formations"
-            contentDisplay={answers.formation?("Formation: "+answers.formation):undefined}
-          />
-        </div>
 
         {/* Final score */}
         <div style={{background:"#E8FF00",borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
