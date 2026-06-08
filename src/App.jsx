@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import './App.css';
+import { supabase } from './supabase';
 
 /* -- DATA ----------------------------------------------------------- */
 const GROUPS={A:{teams:["Mexico","South Africa","South Korea","Czechia"]},B:{teams:["Canada","Bosnia & Herz.","Switzerland","Qatar"]},C:{teams:["Brazil","Morocco","Scotland","Haiti"]},D:{teams:["USA","Paraguay","Australia","Turkiye"]},E:{teams:["Germany","Ecuador","Ivory Coast","Curacao"]},F:{teams:["Netherlands","Japan","Sweden","Tunisia"]},G:{teams:["Belgium","Egypt","Iran","New Zealand"]},H:{teams:["Spain","Cape Verde","Saudi Arabia","Uruguay"]},I:{teams:["France","Senegal","Norway","Iraq"]},J:{teams:["Argentina","Algeria","Austria","Jordan"]},K:{teams:["Portugal","DR Congo","Uzbekistan","Colombia"]},L:{teams:["England","Croatia","Ghana","Panama"]}};
@@ -435,8 +436,9 @@ function ManOfMatch({dayNum,selGame}){
   const[loading,setLoading]=useState(false);
   useEffect(()=>{
     if(!voted||!selGame)return;
-    const key="motm_d"+dayNum+"_"+selGame.replace(/ /g,"_");
-    sGet(key).then(r=>{if(r)setResults(r);});
+    supabase.from("motm_votes").select("player").eq("day_num",dayNum).then(({data})=>{
+      if(data){const c={};data.forEach(r=>{c[r.player]=(c[r.player]||0)+1;});setResults(c);}
+    });
   },[voted,selGame,dayNum]);
   if(!selGame)return null;
   const pts=selGame.split(" vs ").map(t=>t.trim());
@@ -450,20 +452,19 @@ function ManOfMatch({dayNum,selGame}){
   const vote=async(player)=>{
     setVoted(player.name);
     setLoading(true);
-    const key="motm_d"+dayNum+"_"+selGame.replace(/ /g,"_");
-    const existing=await sGet(key)||{};
-    existing[player.name]=(existing[player.name]||0)+1;
-    await sSet(key,existing);
-    setResults(existing);
+    let uname="anon";try{const s=localStorage.getItem("sst2026_username");if(s)uname=JSON.parse(s)||"anon";}catch{}
+    await supabase.from("motm_votes").upsert({day_num:dayNum,username:uname,player:player.name},{onConflict:"day_num,username"});
+    const{data}=await supabase.from("motm_votes").select("player").eq("day_num",dayNum);
+    if(data){const c={};data.forEach(r=>{c[r.player]=(c[r.player]||0)+1;});setResults(c);}
     setLoading(false);
   };
 
   const loadResults=async()=>{
     if(results)return;
     setLoading(true);
-    const key="motm_d"+dayNum+"_"+selGame.replace(/ /g,"_");
-    const r=await sGet(key)||{};
-    setResults(r);
+    const{data}=await supabase.from("motm_votes").select("player").eq("day_num",dayNum);
+    const c={};(data||[]).forEach(r=>{c[r.player]=(c[r.player]||0)+1;});
+    setResults(c);
     setLoading(false);
   };
 
@@ -902,7 +903,7 @@ function DraggableField({positions,setPositions}){
 }
 
 /* -- COMMUNITY COMPONENTS ---------------------------------------- */
-function CommunityPanel({storageKey,myContent,myGame,color,locked,emptyMsg,shareLabel,viewLabel,contentDisplay}){
+function CommunityPanel({storageKey,dayNum,phase,myContent,myGame,color,locked,emptyMsg,shareLabel,viewLabel,contentDisplay}){
   const[entries,setEntries]=useState([]);
   const[count,setCount]=useState(0);
   const[open,setOpen]=useState(false);
@@ -912,29 +913,26 @@ function CommunityPanel({storageKey,myContent,myGame,color,locked,emptyMsg,share
   const hasContent=myContent&&myContent.trim().length>0;
 
   useEffect(()=>{
-    // Load count on mount for button display
-    sGet(storageKey).then(d=>{if(d){setCount(d.length);if(open)setEntries(d);}});
-  },[open,storageKey]);
+    if(!dayNum||!phase)return;
+    supabase.from("community_answers").select("username,answer").eq("day_num",dayNum).eq("question_phase",phase).order("created_at",{ascending:false}).limit(50).then(({data})=>{
+      if(data){setCount(data.length);if(open)setEntries(data.map(r=>({content:r.answer,username:r.username})));}
+    });
+  },[open,dayNum,phase]);
 
   const share=async()=>{
     if(!hasContent){setErr("Add your answer above first!");return;}
     if(hasBad(myContent)){setErr("Your response contains words that are not allowed.");return;}
     if(myContent.length>280){setErr("Please keep it under 280 characters.");return;}
     setSharing(true);
-    const entry={content:myContent.trim().slice(0,280),game:myGame||"the match",ts:Date.now()};
-    const existing=await sGet(storageKey)||[];
-    const updated=[entry,...existing].slice(0,50);
-    await sSet(storageKey,updated);
+    let uname="Anonymous";try{const s=localStorage.getItem("sst2026_username");if(s)uname=JSON.parse(s)||"Anonymous";}catch{}
+    const{error}=await supabase.from("community_answers").insert({day_num:dayNum,question_phase:phase,username:uname,answer:myContent.trim().slice(0,280)});
+    if(error){setErr("Failed to post. Try again.");setSharing(false);return;}
+    const newEntry={content:myContent.trim().slice(0,280),username:uname};
+    const updated=[newEntry,...entries].slice(0,50);
     setEntries(updated);setCount(updated.length);setSub(true);setErr("");setSharing(false);
   };
 
   if(locked)return null;
-
-  if(!hasStorage())return(
-    <div style={{marginTop:6,padding:"8px 12px",background:"rgba(255,75,75,0.06)",border:"1px solid rgba(255,75,75,0.2)",borderRadius:8}}>
-      <div style={{fontSize:11,color:"#FF4B4B",fontFamily:"DM Sans,sans-serif",lineHeight:1.5}}>Community features require the full app at <span style={{fontWeight:700}}>spikedperformanceteam.com</span></div>
-    </div>
-  );
 
   if(!open){
     // No answer yet - show locked hint
@@ -979,7 +977,7 @@ function CommunityPanel({storageKey,myContent,myGame,color,locked,emptyMsg,share
         <div style={{maxHeight:220,overflowY:"auto"}}>
           {entries.map((e,i)=>(
             <div key={i} style={{padding:"8px 4px",borderBottom:i<entries.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
-              <div style={{fontSize:10,fontWeight:700,color,marginBottom:3}}>watching {e.game}</div>
+              <div style={{fontSize:10,fontWeight:700,color,marginBottom:3}}>{e.username||"Anonymous"}</div>
               <div style={{fontSize:12,color:"#F5F5F5",lineHeight:1.5}}>{e.content}</div>
             </div>
           ))}
@@ -989,7 +987,7 @@ function CommunityPanel({storageKey,myContent,myGame,color,locked,emptyMsg,share
   );
 }
 
-const hasStorage=()=>typeof window!=="undefined"&&!!window.storage;
+const hasStorage=()=>true;
 
 /* -- USERNAME PROMPT --------------------------------------------- */
 function UsernamePrompt({onSet}){
@@ -1195,6 +1193,8 @@ function WorksheetScreen({dayNum,onBack,getScore}){
                 <textarea placeholder="Write your answer here..." value={answers[sec.id+"_"+qi]||""} onChange={e=>upd(sec.id+"_"+qi,e.target.value)}/>
                 <CommunityPanel
                   storageKey={"comm_d"+dayNum+"_"+sec.id+"_"+qi}
+                  dayNum={dayNum}
+                  phase={sec.id+"_"+qi}
                   myContent={answers[sec.id+"_"+qi]||""}
                   myGame={selGame}
                   color="#00AEEF"
@@ -1223,6 +1223,8 @@ function WorksheetScreen({dayNum,onBack,getScore}){
           </div>
           <CommunityPanel
             storageKey={"comm_formation_d"+dayNum}
+            dayNum={dayNum}
+            phase="formation"
             myContent={answers.formation||""}
             myGame={selGame}
             color="#4CAF50"
@@ -1561,13 +1563,16 @@ function PredictionsScreen(){
     let code=genCode();
     let attempts=0;
     while(attempts<10){
-      const existing=await sGet("group_"+code);
-      if(!existing)break;
+      const{data}=await supabase.from("groups").select("code").eq("code",code).maybeSingle();
+      if(!data)break;
       code=genCode();
       attempts++;
     }
-    const groupData={name:groupNameInput.trim(),code,createdBy:uid,members:[uid],ts:Date.now()};
-    await sSet("group_"+code,groupData);
+    const{error}=await supabase.from("groups").insert({code,name:groupNameInput.trim()});
+    if(!error){
+      let uname=uid;try{const s=localStorage.getItem("sst2026_username");if(s)uname=JSON.parse(s)||uid;}catch{}
+      await supabase.from("group_members").insert({group_code:code,username:uname,uid});
+    }
     setMyGroupCode(code);setMyGroupName(groupNameInput.trim());setGroupError("");setGroupLoading(false);
   };
 
@@ -1575,12 +1580,10 @@ function PredictionsScreen(){
     const code=groupInput.trim().toUpperCase();
     if(code.length<4){setGroupError("Enter a valid group code.");return;}
     setGroupLoading(true);
-    const groupData=await sGet("group_"+code);
+    const{data:groupData}=await supabase.from("groups").select("name").eq("code",code).maybeSingle();
     if(!groupData){setGroupError("Group not found. Check the code and try again.");setGroupLoading(false);return;}
-    if(!groupData.members.includes(uid)){
-      groupData.members=[...groupData.members,uid];
-      await sSet("group_"+code,groupData);
-    }
+    let uname=uid;try{const s=localStorage.getItem("sst2026_username");if(s)uname=JSON.parse(s)||uid;}catch{}
+    await supabase.from("group_members").upsert({group_code:code,username:uname,uid},{onConflict:"group_code,uid"});
     setMyGroupCode(code);setMyGroupName(groupData.name);setGroupError("");setGroupInput("");setGroupLoading(false);
   };
 
@@ -1591,10 +1594,11 @@ function PredictionsScreen(){
 
   const loadGroupLeaderboard=useCallback(async()=>{
     if(!myGroupCode)return;
-    const groupData=await sGet("group_"+myGroupCode);
-    if(!groupData)return;
+    const{data:members}=await supabase.from("group_members").select("uid").eq("group_code",myGroupCode);
+    if(!members)return;
+    const memberUids=members.map(m=>m.uid);
     const allEntries=await sGet("lb_v4")||[];
-    const memberEntries=allEntries.filter(e=>groupData.members.includes(e.uid));
+    const memberEntries=allEntries.filter(e=>memberUids.includes(e.uid));
     const byUid={};
     memberEntries.forEach(e=>{
       if(!byUid[e.uid]||e.ts>byUid[e.uid].ts)byUid[e.uid]=e;
